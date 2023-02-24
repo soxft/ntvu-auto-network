@@ -144,6 +144,7 @@ func doVerify(retry int) {
 
 		time.Sleep(time.Second * 2)
 		doVerify(retry + 1)
+		return
 	}
 
 	log.Println("login success !")
