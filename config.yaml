@@ -1,0 +1,5 @@
+ISP: 1
+Username: 20222222222
+Password: 123456
+RunTyp: 0
+Cron: 0 */2 * * * *

@@ -15,22 +15,9 @@ import (
 )
 
 var (
-	Gateway   = "http://10.0.1.52:801/eportal/?c=ACSetting&a=Login&jsVersion=2.4.3"
-	UserAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/61.0.3163.91 Safari/537.36"
-	JsVer     = "2.4.3"
+	Gateway = "http://10.0.1.52:801/eportal/?c=ACSetting&a=Login&jsVersion=2.4.3"
+	JsVer   = "2.4.3"
 )
-
-//var (
-//	ISP      string
-//	Username string
-//	Password string
-//	Cron     string
-//)
-
-// 4: %2C0%2C 1
-// 3: %2C0%2C 1 %40aaaa
-// 2: %2C0%2C 1 %40cccc
-// 1: %2C0%2C 1 %40bbbb
 
 var ConfPath string
 var Config tool.Conf
@@ -40,7 +27,7 @@ var ISPMap = map[int]string{
 	3: ",0,{{UNAME}}@aaaa",
 	4: ",0,{{UNAME}}",
 }
-var met string
+var logout bool
 
 func main() {
 	flag.IntVar(&Config.ISP, "isp", 1, "1: 移动, 2: 电信, 3: 联通, 4: 校园网")
@@ -48,7 +35,8 @@ func main() {
 	flag.StringVar(&Config.Password, "p", "", "密码")
 	flag.StringVar(&Config.Cron, "cron", "0 */2 * * * *", "轮训间隔, 请使用`cron表达式`, ex: 0 */2 * * * *\r\n 格式: 秒 分 时 日 月 周")
 	flag.StringVar(&ConfPath, "c", "config.yaml", "配置文件路径")
-	flag.StringVar(&met, "typ", "login", "操作: login or logout")
+	flag.IntVar(&Config.RunTyp, "typ", 0, "0: 单次执行, 1: cron")
+	flag.BoolVar(&logout, "logout", false, "是否为退出登录, true / false")
 	flag.Parse()
 
 	if Cfg, err := tool.ReadConfig(ConfPath); errors.Is(err, tool.ErrFileNotExist) {
@@ -59,8 +47,8 @@ func main() {
 		Config = Cfg
 	}
 
-	if met == "logout" {
-		logout()
+	if logout {
+		doLogout()
 		return
 	}
 
@@ -76,6 +64,11 @@ func main() {
 	Config.Username = strings.ReplaceAll(_isp, "{{UNAME}}", Config.Username)
 
 	log.Printf("continue with Identity: DDDDD= %s | upass= %s", Config.Username, Config.Password)
+
+	if Config.RunTyp == 0 {
+		doConnect()()
+		return
+	}
 
 	// start cron job
 	cr := cron.New(cron.WithSeconds())
@@ -171,7 +164,7 @@ func checkNetwork() bool {
 	return true
 }
 
-func logout() {
+func doLogout() {
 	client := resty.New().SetRedirectPolicy(resty.FlexibleRedirectPolicy(0)).SetTimeout(time.Second * 2)
 	resp, err := client.R().Get("http://10.0.1.52:801/eportal/?c=ACSetting&a=Logout&jsVersion=" + JsVer)
 	if resp.StatusCode() != 302 {
